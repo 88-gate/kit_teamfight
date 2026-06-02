@@ -1,0 +1,41 @@
+# kit_teamfight 設定ファイル
+# すべての調整可能パラメータをここで管理する。
+# 変更後は /ktf reload で再読み込みできる (チーム/数値が対象。旗は flags.yml に別途保存)。
+
+# ポイント (時間経過で貯まる)
+point:
+  tickRateSeconds: 1   # 加算間隔 (秒)
+  amountPerTick: 1     # 1回あたりの加算量
+
+# 旗 (コマンドで設置。0個でも試合は成立する)
+flag:
+  captureRadius: 5.0              # キャプチャ判定半径 (ブロック)
+  captureSeconds: 5              # 占拠完了までの秒数
+  ticketDrainIntervalSeconds: 15 # 旗保持によるチケット減少の間隔 (秒)
+  ticketDrainPerFlag: 1          # 旗1個あたりの減少量 (15秒ごとに旗1個につき1チケット減少)
+
+# チケット
+ticket:
+  initial: 100        # チームごとの初期チケット
+  lossPerKill: 1      # キル時に減るチケット量
+
+# チーム定義 (id を増やせば3チーム以上にも対応)
+# color は org.bukkit.ChatColor の名前 (RED, BLUE, GREEN, YELLOW, ...)
+# spawn は省略可。設定するとリスポーン/試合開始時にテレポートする。
+teams:
+  - id: red
+    name: Red Team
+    color: RED
+    spawn:
+      world: world
+      x: 0.5
+      y: 64.0
+      z: 0.5
+  - id: blue
+    name: Blue Team
+    color: BLUE
+    spawn:
+      world: world
+      x: 20.5
+      y: 64.0
+      z: 20.5

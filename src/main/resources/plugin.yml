@@ -1,0 +1,18 @@
+name: kit_teamfight
+version: '1.0-SNAPSHOT'
+main: lobby.kit_teamfight.Kit_teamfight
+api-version: '1.21'
+description: Kit-based team capture fight (チケット消費 + 旗占拠)
+commands:
+  ktf:
+    description: 試合の制御 (start/stop/reload/status)
+    usage: /ktf start|stop|reload|status
+  team:
+    description: チームへの参加・一覧・スポーン設定
+    usage: /team join <id|auto>|list|setspawn <id>
+  kit:
+    description: kit ショップ・一覧・購入
+    usage: /kit shop|list|buy <id>
+  flag:
+    description: 旗の設置・撤去・一覧・所有者設定
+    usage: /flag create|remove|list|setowner
