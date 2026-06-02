@@ -32,6 +32,32 @@ public class TeamCommand implements TabExecutor {
             }
             return true;
         }
+        // 他プレイヤーのチーム変更 (OP)。コンソールからも実行可能なので Player チェックの前に処理する。
+        if (args[0].equalsIgnoreCase("set")) {
+            if (!sender.isOp()) {
+                sender.sendMessage(ChatColor.RED + "このコマンドは OP のみ実行できます。");
+                return true;
+            }
+            if (args.length < 3) {
+                sender.sendMessage(ChatColor.RED + "使い方: /team set <player> <teamId>");
+                return true;
+            }
+            Player target = org.bukkit.Bukkit.getPlayerExact(args[1]);
+            if (target == null) {
+                sender.sendMessage(ChatColor.RED + "プレイヤー '" + args[1] + "' はオンラインではありません。");
+                return true;
+            }
+            if (game.joinTeam(target, args[2])) {
+                Team team = game.getTeam(args[2]);
+                sender.sendMessage(ChatColor.GREEN + target.getName() + " を "
+                        + team.getDisplayName() + ChatColor.GREEN + " に移動しました。");
+                target.sendMessage(ChatColor.GREEN + team.getDisplayName()
+                        + ChatColor.GREEN + " に移動されました。");
+            } else {
+                sender.sendMessage(ChatColor.RED + "チーム '" + args[2] + "' は存在しません。");
+            }
+            return true;
+        }
         if (!(sender instanceof Player player)) {
             sender.sendMessage(ChatColor.RED + "プレイヤーのみ実行できます。");
             return true;
@@ -81,7 +107,8 @@ public class TeamCommand implements TabExecutor {
             }
             return true;
         }
-        sender.sendMessage(ChatColor.GOLD + "/team join <id|auto> | list | setspawn <id> [OP]");
+        sender.sendMessage(ChatColor.GOLD
+                + "/team join <id|auto> | list | setspawn <id> [OP] | set <player> <id> [OP]");
         return true;
     }
 
@@ -89,7 +116,7 @@ public class TeamCommand implements TabExecutor {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
-            for (String s : List.of("join", "list", "setspawn")) {
+            for (String s : List.of("join", "list", "setspawn", "set")) {
                 if (s.startsWith(args[0].toLowerCase())) {
                     out.add(s);
                 }
@@ -100,6 +127,14 @@ public class TeamCommand implements TabExecutor {
                 out.add(team.getId());
             }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("setspawn")) {
+            for (Team team : game.getTeams()) {
+                out.add(team.getId());
+            }
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("set")) {
+            for (Player online : org.bukkit.Bukkit.getOnlinePlayers()) {
+                out.add(online.getName());
+            }
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("set")) {
             for (Team team : game.getTeams()) {
                 out.add(team.getId());
             }

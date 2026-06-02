@@ -7,7 +7,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 /**
- * 槍騎兵 (180pt) 【騎兵系】: チェーン全身 + ネザライトの槍。
+ * 槍騎兵 (180pt) 【騎兵系】: チェーン全身 + 鉄の槍。
  * スポーン時に鉄馬鎧の馬が出現し自動騎乗 (馬の生成/騎乗は GameManager が担当)。
  */
 public class LancerKit implements Kit {
@@ -29,7 +29,7 @@ public class LancerKit implements Kit {
 
     @Override
     public ItemStack getIcon() {
-        return new ItemStack(Material.NETHERITE_SPEAR);
+        return new ItemStack(Material.IRON_SPEAR);
     }
 
     @Override
@@ -44,7 +44,12 @@ public class LancerKit implements Kit {
 
     @Override
     public double horseMaxHealth() {
-        return 44.0; // 通常(22)の2倍
+        return 33.0; // 通常(22)の3/2 (44から弱体化)
+    }
+
+    @Override
+    public double horseMovementSpeed() {
+        return 0.3375; // 通常(0.225)の3/2
     }
 
     @Override
@@ -54,6 +59,6 @@ public class LancerKit implements Kit {
         inv.setChestplate(new ItemStack(Material.CHAINMAIL_CHESTPLATE));
         inv.setLeggings(new ItemStack(Material.CHAINMAIL_LEGGINGS));
         inv.setBoots(new ItemStack(Material.CHAINMAIL_BOOTS));
-        inv.setItemInMainHand(new ItemStack(Material.NETHERITE_SPEAR));
+        inv.setItemInMainHand(new ItemStack(Material.IRON_SPEAR));
     }
 }

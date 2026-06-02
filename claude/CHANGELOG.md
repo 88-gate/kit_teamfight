@@ -23,8 +23,8 @@
 
 ## 権限 (OP 判定)
 
-- 運営系コマンドを **OP のみ** に制限: `/ktf start|stop|reload`、`/flag create|remove|setowner`、
-  `/team setspawn`。
+- 運営系コマンドを **OP のみ** に制限: `/ktf start|stop|reload|tickets|initialtickets`、
+  `/flag create|remove|setowner`、`/team setspawn|set`。
 - 参照系(`/ktf status`, `/flag list`)とプレイヤー操作(`/team join`, `/kit`)は全員可。
 - 判定は各コマンド内の `sender.isOp()`。
 
@@ -77,8 +77,22 @@
   引き継がず owner=null・ブロック色も白に戻す(従来は `resetAllCaptures()` で進捗だけリセットしていた)。
 - **旗のチケット減少を15秒に1チケットへ**: `flag.ticketDrainIntervalSeconds` を 5→15 に変更
   (config.yml と GameConfig の既定値の両方)。旗1個につき15秒ごとに敵チケット-1。
+- **チケット数の手動変更コマンド**: `/ktf tickets <team> <amount>` を追加 (**OP のみ**)。
+  指定チームのチケットを任意の値に設定し、サイドバーを即時更新する。
+  `Team.setTickets()` は 0 未満を 0 に丸める。タブ補完でサブコマンド/チーム id を候補表示。
+- **初期チケット数の変更コマンド**: `/ktf initialtickets <amount>` を追加 (**OP のみ**)。
+  `GameManager.setInitialTickets()` が `config.ticketInitial` を更新し config.yml に保存。
+  次の試合開始時から反映される(進行中の現在チケットは変えない。0未満は1に丸める)。
+- **プレイヤーのチーム変更コマンド**: `/team set <player> <teamId>` を追加 (**OP のみ**)。
+  対象オンラインプレイヤーを別チームへ移す(`joinTeam()` を流用)。コンソールからも実行可。
+  タブ補完でオンライン名/チーム id を候補表示。
 - **槍騎兵の馬HPを2倍 (44)**: `Kit.horseMaxHealth()` を追加し kit ごとに馬HPを指定可能化。
   `lancer` は 44、それ以外の騎兵(robinhood)は既定 22。`spawnCavalryHorse()` が `horseMaxHealth()` を使用。
+- **槍騎兵の弱体化**: 馬HPを 44→**33**(通常22の3/2)に、馬の移動速度を 0.225→**0.3375**(3/2)に、
+  武器をネザライトの槍→**鉄の槍** (`IRON_SPEAR`) に変更。馬速度の kit 別指定用に
+  `Kit.horseMovementSpeed()`(既定0.225)を追加し、`spawnCavalryHorse()` がこれを使用。
+- **コスト調整 + 重弩兵に防具追加**: ロビンフット(弓騎兵)を 180→**125pt**、重弩兵を 150→**110pt** に値下げ。
+  重弩兵に**革装備一式**を追加(従来は防具なし)。
 - **初期装備も Kit 化**: `DefaultKit`(id `default`、革一式+石剣)を追加。kit 未購入時・死亡からの復帰で適用。
   ショップ/一覧には出さない(KitRegistry には登録せず GameManager が直接保持)。
   これにより **初期装備でもパン2スタックが共通配布される**(死亡後にパンが配られなかった不具合を修正)。

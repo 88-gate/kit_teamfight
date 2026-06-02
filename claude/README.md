@@ -73,6 +73,9 @@ lobby.kit_teamfight
 | kit 購入でスポーン帰還 | `buyKit()` 成功時に自チームスポーンへ `teleport()` |
 | チームのネームタグ色 | 専用ボードのチームに `setColor()` (`applyNameTag`) |
 | サイドバー表示 | `updateSidebar()` = チーム別チケット + 自分のポイント (毎秒) |
+| チケット数を手動変更 | `/ktf tickets <team> <n>` [OP] → `Team.setTickets()` + サイドバー更新 |
+| 初期チケット数を変更 | `/ktf initialtickets <n>` [OP] → `setInitialTickets()` (config.yml 保存・次試合反映) |
+| プレイヤーのチーム変更 | `/team set <player> <id>` [OP] → `joinTeam()` (対象を別チームへ) |
 
 ---
 
@@ -82,6 +85,7 @@ lobby.kit_teamfight
 /team join <id|auto>      チームに参加 (auto = 人数の少ない方へ)
 /team list                チーム一覧とチケット表示
 /team setspawn <id>       現在地(向き込み)をそのチームのスポーンに設定し config保存 [OP]
+/team set <player> <id>   指定プレイヤーのチームを変更 [OP]
 
 /kit shop                 kit ショップGUIを開く
 /kit list                 kit 一覧をチャット表示
@@ -92,18 +96,21 @@ lobby.kit_teamfight
 /flag list                旗一覧
 /flag setowner <id> <team|none>  所有者を直接設定
 
-/ktf start                試合開始 (チケットリセット・装備配布・スポーンへTP) [OP]
+/ktf start                試合開始 (チケットリセット・旗中立化・装備配布・スポーンへTP) [OP]
 /ktf stop                 試合停止 [OP]
 /ktf reload               config.yml 再読込 [OP]
 /ktf status               進行状況・各チームのチケット・旗数
+/ktf tickets <team> <n>   指定チームの現在チケット数を n に設定 [OP]
+/ktf initialtickets <n>   試合開始時の初期チケット数を n に設定し config保存 (次試合から) [OP]
 ```
 
 ### 権限 (OP 判定)
 変えられるとマズい運営系コマンドは **OP のみ** 実行可能:
-- `/ktf start` / `stop` / `reload`
+- `/ktf start` / `stop` / `reload` / `tickets` / `initialtickets`
+- `/team setspawn` / `set`
 - `/flag create` / `remove` / `setowner`
 
-参照系 (`/ktf status`, `/flag list`) とプレイヤー操作 (`/team`, `/kit`) は全員可。
+参照系 (`/ktf status`, `/flag list`) とプレイヤー操作 (`/team join`, `/kit`) は全員可。
 判定は各コマンド内の `sender.isOp()`。より細かい権限ノードが必要になったら
 `plugin.yml` の `permissions:` + `hasPermission()` へ拡張する。
 

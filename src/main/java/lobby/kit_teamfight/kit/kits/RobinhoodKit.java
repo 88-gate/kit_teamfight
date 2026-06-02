@@ -8,7 +8,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 /**
- * ロビンフット (180pt) 【騎兵系】: 革全身 + 石の剣 + 無限弓。
+ * ロビンフット / 弓騎兵 (125pt) 【騎兵系】: 革全身 + 石の剣 + 無限弓。
  * スポーン時に革馬鎧の馬が出現し自動騎乗 (馬の生成/騎乗は GameManager が担当)。
  */
 public class RobinhoodKit implements Kit {
@@ -25,7 +25,7 @@ public class RobinhoodKit implements Kit {
 
     @Override
     public int getCost() {
-        return 180;
+        return 125;
     }
 
     @Override

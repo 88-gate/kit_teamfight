@@ -10,7 +10,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
 /**
- * 重弩兵 (150pt): 防具なし。貫通(Piercing)クロスボウ×3 + 矢4スタック + 石の剣。常時 鈍足I。
+ * 重弩兵 (110pt): 革装備一式。貫通(Piercing)クロスボウ×3 + 矢4スタック + 石の剣。常時 鈍足I。
  * クロスボウは装填に時間がかかるため、3丁を持ち替えて連射するバースト型。
  * 鈍足の解除は GameManager 側 (kit切替/死亡時の効果除去) で行うため、ここでは付けるだけ。
  */
@@ -28,7 +28,7 @@ public class HeavyCrossbowKit implements Kit {
 
     @Override
     public int getCost() {
-        return 150;
+        return 110;
     }
 
     @Override
@@ -39,7 +39,11 @@ public class HeavyCrossbowKit implements Kit {
     @Override
     public void apply(Player player) {
         PlayerInventory inv = player.getInventory();
-        // 防具なし
+        // 革装備一式
+        inv.setHelmet(new ItemStack(Material.LEATHER_HELMET));
+        inv.setChestplate(new ItemStack(Material.LEATHER_CHESTPLATE));
+        inv.setLeggings(new ItemStack(Material.LEATHER_LEGGINGS));
+        inv.setBoots(new ItemStack(Material.LEATHER_BOOTS));
 
         for (int i = 0; i < 3; i++) {
             ItemStack crossbow = new ItemStack(Material.CROSSBOW);

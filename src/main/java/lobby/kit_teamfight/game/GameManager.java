@@ -521,11 +521,11 @@ public class GameManager {
         horse.setDomestication(1);
         horse.setPersistent(false); // 再起動でワールドに残さない
 
-        // 平均くらいの性能に固定 (バニラはランダムなので再現性のため)。HP は kit ごと
+        // 性能を固定 (バニラはランダムなので再現性のため)。HP/速度は kit ごと
         double maxHp = kit.horseMaxHealth();
         setAttribute(horse, Attribute.MAX_HEALTH, maxHp);
         horse.setHealth(maxHp);
-        setAttribute(horse, Attribute.MOVEMENT_SPEED, 0.225);
+        setAttribute(horse, Attribute.MOVEMENT_SPEED, kit.horseMovementSpeed());
         setAttribute(horse, Attribute.JUMP_STRENGTH, 0.7);
 
         // サドル + 馬鎧 (馬鎧は BODY スロット)
@@ -607,6 +607,19 @@ public class GameManager {
     /** 死亡時に保有 kit を解除する。次のリスポーンで初期装備に戻る。 */
     public void resetKitOnDeath(Player player) {
         getPlayerData(player).setCurrentKitId(null);
+    }
+
+    /**
+     * 初期チケット数 (試合開始時に各チームへ配られる値) を設定し config.yml に永続化する。
+     * 次の試合開始時から反映される (進行中チームの現在チケットは変更しない)。
+     * @return 設定後の値 (0未満は1に丸める)
+     */
+    public int setInitialTickets(int amount) {
+        int value = Math.max(1, amount);
+        config.ticketInitial = value;
+        plugin.getConfig().set("ticket.initial", value);
+        plugin.saveConfig();
+        return value;
     }
 
     // ---- ポイント -----------------------------------------------------------

@@ -55,4 +55,12 @@ public interface Kit {
     default double horseMaxHealth() {
         return 22.0;
     }
+
+    /**
+     * 騎兵系の馬の移動速度。既定は平均くらいの 0.225。
+     * 非騎兵では使われない。
+     */
+    default double horseMovementSpeed() {
+        return 0.225;
+    }
 }
