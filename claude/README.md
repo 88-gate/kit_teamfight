@@ -65,6 +65,7 @@ lobby.kit_teamfight
 | 旗をコマンドで設置 (任意個数) | `/flag create`、`FlagManager` |
 | 旗周囲に数秒留まると占拠 | `GameTask.evaluateCapture()` |
 | キル/旗保持で敵チケット減少 | `onDeath()` / `tickFlagDrain()` |
+| キルでボーナスポイント | `onKill()` (敵キルで +`point.killBonus` 既定10pt。自殺/味方殺しは除外) |
 | チケット0で勝利 | `checkVictory()` |
 | 2チーム→N チーム拡張 | `teams` を config 定義、全処理をループ化 |
 | 制限時間なし | タイマー終了条件は実装していない |
@@ -145,8 +146,9 @@ lobby.kit_teamfight
 
 ## kit について
 
-現在のラインナップは5つ: `archer`(50) / `skirmisher`(100) / `lancer`(180/騎兵) /
-`robinhood`(180/騎兵) / `sniper`(240)。各 kit の中身・騎兵系の仕様は **`KITS.md`** を参照。
+現在のラインナップは7つ: `archer`(50) / `skirmisher`(100) / `soldier`(150) / `arbalest`(110) /
+`lancer`(180/騎兵) / `robinhood`(125/騎兵) / `sniper`(240)。
+各 kit の中身・騎兵系の仕様は **`KITS.md`** を参照。
 新規 kit は `Kit` を実装したクラスを作り、`Kit_teamfight.onEnable()` で
 `game.getKitRegistry().register(...)` するだけで増やせる。コア側の変更は不要
 (騎兵化したい場合は `isCavalry()`/`horseArmor()` を override するだけ)。

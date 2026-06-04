@@ -64,6 +64,9 @@
 
 - サンプル `ArcherKit`/`KnightKit` を廃し、**6 kit を実装**: `archer`(50) / `skirmisher`(100) /
   `arbalest`(150) / `lancer`(180/騎兵) / `robinhood`(180/騎兵) / `sniper`(240)。
+- **キル報酬ポイント**: 敵を1キルすると **+10pt**(`point.killBonus`、config 可変)。
+  `GameManager.onKill()` が加点しサイドバー更新。自殺・味方殺しは加点しない。試合中のみ。
+  キル者は `PlayerDeathEvent` の `victim.getKiller()` で判定。
   - `arbalest`(重弩兵): 防具なし・貫通(Piercing IV)クロスボウ×3・矢4スタック・常時鈍足I。
 - **アイテム投棄禁止 (試合中のみ)**: `PlayerListener.onDrop`(`PlayerDropItemEvent`)を
   `game.isRunning()` のときだけキャンセル。試合外(ロビー等)では捨てられる。
@@ -73,6 +76,7 @@
 - **軍兵 (soldier) 追加**: 150pt。鉄装備フル + ダイヤ剣 + 木の斧(盾割り用) + 貫通クロスボウ×1 + 矢1スタック。
 - **kit 武器の調整**: 軽散兵からクロスボウ/矢を撤去(石斧+盾の近接寄りに)。軍兵に貫通クロスボウ×1+矢1スタックを追加。
   重弩兵に石の剣を追加(接近戦用)。
+- **kit 武器の追加調整**: 軍兵の矢を 1→**3スタック (192本)** に増量。アーチャーの近接武器を木の剣→**石の剣**に変更。
 - **試合開始時に全旗を中立化**: `startMatch()` が `neutralizeAllFlags()` を呼び、前の試合の旗所有者を
   引き継がず owner=null・ブロック色も白に戻す(従来は `resetAllCaptures()` で進捗だけリセットしていた)。
 - **旗のチケット減少を15秒に1チケットへ**: `flag.ticketDrainIntervalSeconds` を 5→15 に変更

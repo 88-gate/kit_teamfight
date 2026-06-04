@@ -8,7 +8,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 /**
- * 軍兵 (150pt): 鉄装備フルセット + ダイヤの剣 + 木の斧 + 貫通クロスボウ + 矢1スタック。
+ * 軍兵 (150pt): 鉄装備フルセット + ダイヤの剣 + 木の斧 + 貫通クロスボウ + 矢3スタック。
  * 重装の近接。剣が主武器、木の斧は盾割り用、貫通クロスボウで遠距離も対応。
  */
 public class SoldierKit implements Kit {
@@ -47,5 +47,7 @@ public class SoldierKit implements Kit {
         crossbow.addEnchantment(Enchantment.PIERCING, 4); // 貫通IV
         inv.addItem(crossbow);
         inv.addItem(new ItemStack(Material.ARROW, 64));
+        inv.addItem(new ItemStack(Material.ARROW, 64));
+        inv.addItem(new ItemStack(Material.ARROW, 64)); // 計3スタック(192本)
     }
 }

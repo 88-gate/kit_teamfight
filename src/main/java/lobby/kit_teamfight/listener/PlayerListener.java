@@ -124,6 +124,8 @@ public class PlayerListener implements Listener {
     public void onDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
         game.onDeath(victim);
+        // キル報酬: 倒した相手 (敵プレイヤー) にボーナスポイント
+        game.onKill(victim.getKiller(), victim);
         // 死亡で保有 kit を解除 (次は初期装備)
         game.resetKitOnDeath(victim);
         // 馬は復活しないので、死亡時に馬を片付ける

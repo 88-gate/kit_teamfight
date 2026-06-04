@@ -665,6 +665,24 @@ public class GameManager {
     }
 
     /**
+     * キル報酬: キルしたプレイヤーにボーナスポイントを与える。
+     * 自殺・同チームキル(味方殺し)は加点しない。試合中のみ。
+     */
+    public void onKill(Player killer, Player victim) {
+        if (!running || killer == null || killer.equals(victim) || config.pointKillBonus <= 0) {
+            return;
+        }
+        Team killerTeam = getTeamOf(killer);
+        Team victimTeam = getTeamOf(victim);
+        if (killerTeam != null && killerTeam == victimTeam) {
+            return; // 味方殺しは加点しない
+        }
+        getPlayerData(killer).addPoints(config.pointKillBonus);
+        killer.sendMessage(ChatColor.GREEN + "+" + config.pointKillBonus + "pt (キル)");
+        updateSidebar();
+    }
+
+    /**
      * 旗保持によるチケット減少。各チームが所有する旗数に応じて、敵チーム全てから均等に減らす。
      * 旗が 0個ならこのメソッドは何もしない。
      */

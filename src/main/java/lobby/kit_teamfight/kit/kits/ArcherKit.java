@@ -8,7 +8,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 /**
- * アーチャー (50pt): 革(上半身のみ) + 木の剣 + 無限弓。
+ * アーチャー (50pt): 革(上半身のみ) + 石の剣 + 無限弓。
  * 無限弓は矢が1本以上必要なので矢を1本配る。
  */
 public class ArcherKit implements Kit {
@@ -38,7 +38,7 @@ public class ArcherKit implements Kit {
         PlayerInventory inv = player.getInventory();
         inv.setHelmet(new ItemStack(Material.LEATHER_HELMET));
         inv.setChestplate(new ItemStack(Material.LEATHER_CHESTPLATE));
-        inv.setItemInMainHand(new ItemStack(Material.WOODEN_SWORD));
+        inv.setItemInMainHand(new ItemStack(Material.STONE_SWORD));
 
         ItemStack bow = new ItemStack(Material.BOW);
         bow.addEnchantment(Enchantment.INFINITY, 1);
