@@ -476,6 +476,17 @@ public class GameManager {
         equip(player);
     }
 
+    /** 満腹度と HP を全回復する (試合開始時に呼ぶ)。HP は最大値属性に合わせる。 */
+    public void restoreVitals(Player player) {
+        AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
+        if (maxHealth != null) {
+            player.setHealth(maxHealth.getValue());
+        }
+        player.setFoodLevel(20);
+        player.setSaturation(20f);
+        player.setExhaustion(0f);
+    }
+
     private void clearEquipment(Player player) {
         PlayerInventory inv = player.getInventory();
         inv.setHelmet(null);
@@ -665,24 +676,6 @@ public class GameManager {
     }
 
     /**
-     * キル報酬: キルしたプレイヤーにボーナスポイントを与える。
-     * 自殺・同チームキル(味方殺し)は加点しない。試合中のみ。
-     */
-    public void onKill(Player killer, Player victim) {
-        if (!running || killer == null || killer.equals(victim) || config.pointKillBonus <= 0) {
-            return;
-        }
-        Team killerTeam = getTeamOf(killer);
-        Team victimTeam = getTeamOf(victim);
-        if (killerTeam != null && killerTeam == victimTeam) {
-            return; // 味方殺しは加点しない
-        }
-        getPlayerData(killer).addPoints(config.pointKillBonus);
-        killer.sendMessage(ChatColor.GREEN + "+" + config.pointKillBonus + "pt (キル)");
-        updateSidebar();
-    }
-
-    /**
      * 旗保持によるチケット減少。各チームが所有する旗数に応じて、敵チーム全てから均等に減らす。
      * 旗が 0個ならこのメソッドは何もしない。
      */
@@ -776,6 +769,7 @@ public class GameManager {
             }
             for (Player online : Bukkit.getOnlinePlayers()) {
                 equip(online);
+                restoreVitals(online); // 試合開始時に満腹度と HP を全回復
             }
         }, 20L);
         return true;

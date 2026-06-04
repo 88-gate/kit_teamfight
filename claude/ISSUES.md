@@ -11,7 +11,7 @@
 - **対応**: IntelliJ 同梱の Maven を直接呼んでビルドした。
   `C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2024.2.1\plugins\maven\lib\maven3\bin\mvn.cmd`
 - **恒久対応案**: スタンドアロン Maven を入れて PATH に通すか、Maven Wrapper (`mvnw`) をリポジトリに追加する。
-- ビルド自体は成功 (`target/kit_teamfight-1.0-SNAPSHOT.jar` 生成、約 42KB)。
+- ビルド自体は成功 (`target/kit_teamfight-1.0-SNAPSHOT-shaded.jar` 生成、約 66KB)。
 
 ---
 
@@ -94,7 +94,8 @@
 - スコアボード / ボスバー表示 (チケット残量・自分のポイント・保有kit)
 - 旗の視覚ブロック設置とパーティクル等の演出
 - 試合終了後の処理 (ロビー送還・自動再戦)
-- キル/旗保持によるボーナスポイント (`PointSource` の追加実装)。今は時間経過のみ
+- 旗保持によるボーナスポイント。今は時間経過 + キルのみ
+  - **キルボーナスは実装済み**: 敵キルで `point.killBonus` (既定10pt)。`GameManager.onKill()`。
 - config の旗ドレイン・キャプチャ値のバランス調整 (暫定値)
 
 ---

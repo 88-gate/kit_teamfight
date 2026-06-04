@@ -6,7 +6,6 @@
 point:
   tickRateSeconds: 1   # 加算間隔 (秒)
   amountPerTick: 1     # 1回あたりの加算量
-  killBonus: 10        # 敵を1キルしたときの獲得ポイント
 
 # 旗 (コマンドで設置。0個でも試合は成立する)
 flag:

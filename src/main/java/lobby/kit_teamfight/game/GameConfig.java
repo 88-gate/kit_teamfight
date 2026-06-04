@@ -9,7 +9,6 @@ public class GameConfig {
 
     public int pointTickRateSeconds;
     public int pointAmountPerTick;
-    public int pointKillBonus;
 
     public double flagCaptureRadius;
     public int flagCaptureSeconds;
@@ -22,7 +21,6 @@ public class GameConfig {
     public void load(FileConfiguration c) {
         pointTickRateSeconds = Math.max(1, c.getInt("point.tickRateSeconds", 1));
         pointAmountPerTick = Math.max(0, c.getInt("point.amountPerTick", 1));
-        pointKillBonus = Math.max(0, c.getInt("point.killBonus", 10));
 
         flagCaptureRadius = Math.max(1.0, c.getDouble("flag.captureRadius", 5.0));
         flagCaptureSeconds = Math.max(1, c.getInt("flag.captureSeconds", 5));

@@ -4,6 +4,7 @@ import lobby.kit_teamfight.game.GameManager;
 import lobby.kit_teamfight.game.Team;
 import lobby.kit_teamfight.player.PlayerData;
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -13,8 +14,11 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityMountEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -37,6 +41,7 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        player.setGameMode(GameMode.ADVENTURE); // サーバー参加時はアドベンチャーモードに固定
         PlayerData data = game.getPlayerData(player);
         if (data.getTeamId() == null) {
             game.autoAssign(player);
@@ -64,6 +69,34 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
         if (game.isRunning()) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** 槍 (SPEAR) は左手 (オフハンド) に持てない。 */
+    private boolean isSpear(ItemStack item) {
+        return item != null && item.getType().name().endsWith("_SPEAR");
+    }
+
+    /** F キーでのメインハンド↔オフハンド入れ替えで、槍がオフハンドへ移るのを防ぐ。 */
+    @EventHandler
+    public void onSwapHand(PlayerSwapHandItemsEvent event) {
+        // 入れ替え後にオフハンドへ入る側 (= 現在のメインハンド) が槍ならキャンセル
+        if (isSpear(event.getOffHandItem())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** インベントリ操作でオフハンド枠 (slot 40) に槍を入れるのを防ぐ。 */
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getSlot() != 40) {
+            return; // オフハンド枠以外は無関係
+        }
+        // カーソルで置く / 数字キーでホットバーから入れるケースを拾う (取り出しは妨げない)
+        if (isSpear(event.getCursor())
+                || (event.getHotbarButton() >= 0
+                        && isSpear(event.getWhoClicked().getInventory().getItem(event.getHotbarButton())))) {
             event.setCancelled(true);
         }
     }
@@ -124,8 +157,6 @@ public class PlayerListener implements Listener {
     public void onDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
         game.onDeath(victim);
-        // キル報酬: 倒した相手 (敵プレイヤー) にボーナスポイント
-        game.onKill(victim.getKiller(), victim);
         // 死亡で保有 kit を解除 (次は初期装備)
         game.resetKitOnDeath(victim);
         // 馬は復活しないので、死亡時に馬を片付ける
