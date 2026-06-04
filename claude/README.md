@@ -75,6 +75,7 @@ lobby.kit_teamfight
 | サイドバー表示 | `updateSidebar()` = チーム別チケット + 自分のポイント (毎秒) |
 | チケット数を手動変更 | `/ktf tickets <team> <n>` [OP] → `Team.setTickets()` + サイドバー更新 |
 | 初期チケット数を変更 | `/ktf initialtickets <n>` [OP] → `setInitialTickets()` (config.yml 保存・次試合反映) |
+| 旗ドレイン間隔を変更 | `/ktf flagdrain <秒>` [OP] → `setFlagDrainInterval()` (config.yml 保存・即時反映) |
 | プレイヤーのチーム変更 | `/team set <player> <id>` [OP] → `joinTeam()` (対象を別チームへ) |
 
 ---
@@ -102,11 +103,12 @@ lobby.kit_teamfight
 /ktf status               進行状況・各チームのチケット・旗数
 /ktf tickets <team> <n>   指定チームの現在チケット数を n に設定 [OP]
 /ktf initialtickets <n>   試合開始時の初期チケット数を n に設定し config保存 (次試合から) [OP]
+/ktf flagdrain <秒>       旗保持で何秒に1回チケットが減るかを設定し config保存 (即時反映) [OP]
 ```
 
 ### 権限 (OP 判定)
 変えられるとマズい運営系コマンドは **OP のみ** 実行可能:
-- `/ktf start` / `stop` / `reload` / `tickets` / `initialtickets`
+- `/ktf start` / `stop` / `reload` / `tickets` / `initialtickets` / `flagdrain`
 - `/team setspawn` / `set`
 - `/flag create` / `remove` / `setowner`
 

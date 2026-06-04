@@ -24,13 +24,15 @@ public class GameCommand implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(ChatColor.GOLD + "/ktf start | stop | reload | status | tickets | initialtickets");
+            sender.sendMessage(ChatColor.GOLD
+                    + "/ktf start | stop | reload | status | tickets | initialtickets | flagdrain");
             return true;
         }
-        // start/stop/reload/tickets/initialtickets は OP のみ (status は参照系なので全員可)
+        // start/stop/reload/tickets/initialtickets/flagdrain は OP のみ (status は参照系なので全員可)
         String sub = args[0].toLowerCase();
         if ((sub.equals("start") || sub.equals("stop") || sub.equals("reload")
-                || sub.equals("tickets") || sub.equals("initialtickets")) && !sender.isOp()) {
+                || sub.equals("tickets") || sub.equals("initialtickets")
+                || sub.equals("flagdrain")) && !sender.isOp()) {
             sender.sendMessage(ChatColor.RED + "このコマンドは OP のみ実行できます。");
             return true;
         }
@@ -58,8 +60,9 @@ public class GameCommand implements TabExecutor {
             }
             case "tickets" -> handleTickets(sender, args);
             case "initialtickets" -> handleInitialTickets(sender, args);
+            case "flagdrain" -> handleFlagDrain(sender, args);
             default -> sender.sendMessage(ChatColor.GOLD
-                    + "/ktf start | stop | reload | status | tickets | initialtickets");
+                    + "/ktf start | stop | reload | status | tickets | initialtickets | flagdrain");
         }
         return true;
     }
@@ -112,11 +115,32 @@ public class GameCommand implements TabExecutor {
                 + " に設定しました (次の試合開始時から反映)。");
     }
 
+    /** /ktf flagdrain <seconds> — 旗保持で何秒に1回チケットが減るかを設定 (OP)。即時反映。 */
+    private void handleFlagDrain(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.GOLD + "/ktf flagdrain <seconds>");
+            sender.sendMessage(ChatColor.GRAY + "現在: 旗保持で "
+                    + game.getConfig().flagDrainIntervalSeconds + "秒に1回チケット減少");
+            return;
+        }
+        int seconds;
+        try {
+            seconds = Integer.parseInt(args[1]);
+        } catch (NumberFormatException e) {
+            sender.sendMessage(ChatColor.RED + "秒数は整数で指定してください。");
+            return;
+        }
+        int value = game.setFlagDrainInterval(seconds);
+        sender.sendMessage(ChatColor.GREEN + "旗保持によるチケット減少を "
+                + value + "秒に1回に設定しました。");
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
-            for (String s : List.of("start", "stop", "reload", "status", "tickets", "initialtickets")) {
+            for (String s : List.of("start", "stop", "reload", "status",
+                    "tickets", "initialtickets", "flagdrain")) {
                 if (s.startsWith(args[0].toLowerCase())) {
                     out.add(s);
                 }

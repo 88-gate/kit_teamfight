@@ -622,6 +622,19 @@ public class GameManager {
         return value;
     }
 
+    /**
+     * 旗保持によるチケット減少の間隔 (何秒に1回減らすか) を設定し config.yml に永続化する。
+     * 毎秒の試合ループが config の値を直接見るため、進行中でも即座に反映される。
+     * @return 設定後の値 (1未満は1に丸める)
+     */
+    public int setFlagDrainInterval(int seconds) {
+        int value = Math.max(1, seconds);
+        config.flagDrainIntervalSeconds = value;
+        plugin.getConfig().set("flag.ticketDrainIntervalSeconds", value);
+        plugin.saveConfig();
+        return value;
+    }
+
     // ---- ポイント -----------------------------------------------------------
 
     /** 全オンラインプレイヤーに時間経過ポイントを加算する (タスクから呼ばれる)。 */

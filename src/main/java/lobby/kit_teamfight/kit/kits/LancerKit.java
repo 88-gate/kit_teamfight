@@ -47,10 +47,7 @@ public class LancerKit implements Kit {
         return 33.0; // 通常(22)の3/2 (44から弱体化)
     }
 
-    @Override
-    public double horseMovementSpeed() {
-        return 0.3375; // 通常(0.225)の3/2
-    }
+    // 馬の移動速度は既定 (通常 0.225) を使う
 
     @Override
     public void apply(Player player) {
@@ -60,5 +57,6 @@ public class LancerKit implements Kit {
         inv.setLeggings(new ItemStack(Material.CHAINMAIL_LEGGINGS));
         inv.setBoots(new ItemStack(Material.CHAINMAIL_BOOTS));
         inv.setItemInMainHand(new ItemStack(Material.IRON_SPEAR));
+        inv.addItem(new ItemStack(Material.STONE_SWORD)); // 接近戦用のサブ武器
     }
 }
