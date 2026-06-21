@@ -421,6 +421,30 @@ public class GameManager {
         return smallest;
     }
 
+    /**
+     * オンライン全員をランダムにシャッフルし、各チームへ人数が均等 (差は最大1) になるよう振り分ける。
+     * シャッフルしたプレイヤー列をチームへラウンドロビンで配ることで均等性を保証する。
+     * @return 振り分けた人数。チームが未定義なら -1。
+     */
+    public int shuffleTeams() {
+        if (teams.isEmpty()) {
+            return -1;
+        }
+        List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+        java.util.Collections.shuffle(online);
+        List<Team> teamList = new ArrayList<>(teams.values());
+        for (int i = 0; i < online.size(); i++) {
+            Player player = online.get(i);
+            Team team = teamList.get(i % teamList.size());
+            getPlayerData(player).setTeamId(team.getId());
+        }
+        // ネームタグ/ボードの所属を全員ぶん貼り直す
+        for (Player player : online) {
+            applyNameTag(player);
+        }
+        return online.size();
+    }
+
     public boolean joinTeam(Player player, String teamId) {
         Team team = getTeam(teamId);
         if (team == null) {

@@ -11,6 +11,7 @@ import lobby.kit_teamfight.kit.KitShop;
 import lobby.kit_teamfight.kit.kits.ArcherKit;
 import lobby.kit_teamfight.kit.kits.HeavyCrossbowKit;
 import lobby.kit_teamfight.kit.kits.LancerKit;
+import lobby.kit_teamfight.kit.kits.NetherStarKit;
 import lobby.kit_teamfight.kit.kits.RobinhoodKit;
 import lobby.kit_teamfight.kit.kits.SkirmisherKit;
 import lobby.kit_teamfight.kit.kits.SniperKit;
@@ -41,6 +42,7 @@ public final class Kit_teamfight extends JavaPlugin {
         game.getKitRegistry().register(new RobinhoodKit());
         game.getKitRegistry().register(new HeavyCrossbowKit());
         game.getKitRegistry().register(new SniperKit());
+        game.getKitRegistry().register(new NetherStarKit());
 
         // リスナー登録
         KitShop shop = new KitShop(game);

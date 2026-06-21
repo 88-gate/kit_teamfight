@@ -8,8 +8,8 @@ commands:
     description: 試合の制御 (start/stop/reload/status)
     usage: /ktf start|stop|reload|status
   team:
-    description: チームへの参加・一覧・スポーン設定
-    usage: /team join <id|auto>|list|setspawn <id>
+    description: チームへの参加・一覧・ランダム振り分け・スポーン設定
+    usage: /team join <id|auto>|list|shuffle|setspawn <id>
   kit:
     description: kit ショップ・一覧・購入
     usage: /kit shop|list|buy <id>

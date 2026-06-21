@@ -58,6 +58,28 @@ public class TeamCommand implements TabExecutor {
             }
             return true;
         }
+        // 全員をランダムに均等振り分け (OP)。コンソールからも実行可能。
+        if (args[0].equalsIgnoreCase("shuffle")) {
+            if (!sender.isOp()) {
+                sender.sendMessage(ChatColor.RED + "このコマンドは OP のみ実行できます。");
+                return true;
+            }
+            int assigned = game.shuffleTeams();
+            if (assigned < 0) {
+                sender.sendMessage(ChatColor.RED + "チームが定義されていません。config.yml を確認してください。");
+                return true;
+            }
+            if (assigned == 0) {
+                sender.sendMessage(ChatColor.YELLOW + "オンラインのプレイヤーがいません。");
+                return true;
+            }
+            org.bukkit.Bukkit.broadcastMessage(ChatColor.GOLD + "[KitTeamfight] "
+                    + assigned + "人をランダムにチーム分けしました！");
+            for (Team team : game.getTeams()) {
+                sender.sendMessage(" - " + team.getDisplayName());
+            }
+            return true;
+        }
         if (!(sender instanceof Player player)) {
             sender.sendMessage(ChatColor.RED + "プレイヤーのみ実行できます。");
             return true;
@@ -86,6 +108,10 @@ public class TeamCommand implements TabExecutor {
             return true;
         }
         if (args[0].equalsIgnoreCase("join")) {
+            if (!sender.isOp()) {
+                sender.sendMessage(ChatColor.RED + "このコマンドは OP のみ実行できます。");
+                return true;
+            }
             if (args.length < 2) {
                 sender.sendMessage(ChatColor.RED + "使い方: /team join <id|auto>");
                 return true;
@@ -108,7 +134,7 @@ public class TeamCommand implements TabExecutor {
             return true;
         }
         sender.sendMessage(ChatColor.GOLD
-                + "/team join <id|auto> | list | setspawn <id> [OP] | set <player> <id> [OP]");
+                + "/team join <id|auto> | list | shuffle [OP] | setspawn <id> [OP] | set <player> <id> [OP]");
         return true;
     }
 
@@ -116,7 +142,7 @@ public class TeamCommand implements TabExecutor {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
-            for (String s : List.of("join", "list", "setspawn", "set")) {
+            for (String s : List.of("join", "list", "shuffle", "setspawn", "set")) {
                 if (s.startsWith(args[0].toLowerCase())) {
                     out.add(s);
                 }
