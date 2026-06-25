@@ -4,19 +4,17 @@ import lobby.kit_teamfight.flag.FlagManager;
 import lobby.kit_teamfight.kit.Kit;
 import lobby.kit_teamfight.kit.KitRegistry;
 import lobby.kit_teamfight.player.PlayerData;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Firework;
 import org.bukkit.entity.Horse;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 
@@ -46,6 +44,13 @@ public class GameManager {
 
     private boolean running = false;
 
+    // ---- チーム希望受付フェーズ ---------------------------------------------
+    /** 希望受付中にプレイヤーが選んだチーム (uuid -> teamId 小文字)。 */
+    private final Map<UUID, String> teamPreferences = new HashMap<>();
+    private boolean selectionActive = false;
+    private TeamSelectionTask selectionTask;
+    private final java.util.Random random = new java.util.Random();
+
     public GameManager(Plugin plugin) {
         this.plugin = plugin;
         this.flagManager = new FlagManager(plugin);
@@ -57,10 +62,41 @@ public class GameManager {
     public void reload() {
         config.load(plugin.getConfig());
         loadTeams();
+        syncVanillaTeams(); // メインボードへ対応するバニラチームを作成/色同期
         // チーム定義が変わった可能性があるので、各プレイヤーのボードを作り直して再適用
         boards.clear();
         for (Player online : Bukkit.getOnlinePlayers()) {
             applyNameTag(online);
+        }
+    }
+
+    /** メインスコアボードを返す (取得不可なら null)。チーム所属の正はここ。 */
+    private org.bukkit.scoreboard.Scoreboard mainBoard() {
+        return Bukkit.getScoreboardManager() == null ? null
+                : Bukkit.getScoreboardManager().getMainScoreboard();
+    }
+
+    /**
+     * config のチームに対応するバニラチームをメインボードに用意し、色を同期する。
+     * 既存の所属エントリは消さない。OP は /team join &lt;id&gt; &lt;player&gt; でここへ振り分ける。
+     */
+    private void syncVanillaTeams() {
+        org.bukkit.scoreboard.Scoreboard main = mainBoard();
+        if (main == null) {
+            return;
+        }
+        for (Team team : teams.values()) {
+            org.bukkit.scoreboard.Team vt = main.getTeam(team.getId());
+            if (vt == null) {
+                vt = main.registerNewTeam(team.getId());
+            }
+            try {
+                if (team.getColor().isColor()) {
+                    vt.setColor(team.getColor());
+                }
+            } catch (IllegalArgumentException ignored) {
+                // 色以外の ChatColor は無視
+            }
         }
     }
 
@@ -199,7 +235,47 @@ public class GameManager {
             // 自分のポイント行 (ラベル固定、スコア=ポイント値)
             PlayerData data = getPlayerData(online);
             obj.getScore(POINT_LINE).setScore(data.getPoints());
+
+            // 旗の所有チーム行。所有者が変わると表示が変わるため、エントリは不変トークンに固定し
+            // scoreboard Team の prefix だけ書き換える (古い行が残らないようにする)。
+            int fi = 0;
+            for (lobby.kit_teamfight.flag.Flag flag : flagManager.all()) {
+                String teamName = "ktf_f" + fi;
+                org.bukkit.scoreboard.Team line = b.getTeam(teamName);
+                if (line == null) {
+                    line = b.registerNewTeam(teamName);
+                }
+                String token = ChatColor.values()[fi % ChatColor.values().length].toString();
+                line.addEntry(token);
+                line.setPrefix(ChatColor.YELLOW + "旗" + flag.getId() + ": " + flagOwnerLabel(flag));
+                obj.getScore(token).setScore(-1 - fi); // 旗行はサイドバー下部へ
+                fi++;
+            }
+
+            // Tab (プレイヤーリスト) に各プレイヤーのキル数を表示する
+            org.bukkit.scoreboard.Objective klist = b.getObjective("ktf_klist");
+            if (klist == null) {
+                klist = b.registerNewObjective("ktf_klist", "dummy",
+                        ChatColor.RED + "Kills");
+                klist.setDisplaySlot(org.bukkit.scoreboard.DisplaySlot.PLAYER_LIST);
+            }
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                klist.getScore(p.getName()).setScore(getPlayerData(p).getKills());
+            }
         }
+    }
+
+    /** 旗の所有チームを色付きラベルにする。未所有は「中立」。 */
+    private String flagOwnerLabel(lobby.kit_teamfight.flag.Flag flag) {
+        String ownerId = flag.getOwnerTeamId();
+        if (ownerId == null) {
+            return ChatColor.GRAY + "中立";
+        }
+        Team team = getTeam(ownerId);
+        if (team == null) {
+            return ChatColor.GRAY + "中立";
+        }
+        return team.getColor() + "" + team.getName();
     }
 
     /** プレイヤー切断時にボードを破棄する。 */
@@ -292,6 +368,7 @@ public class GameManager {
         flag.setOwnerTeamId(teamId);
         flag.resetCapture();
         flagVisualizer.render(flag);
+        flagVisualizer.showCaptureBurst(flag); // 占領した瞬間の軽い演出
         flagManager.save();
     }
 
@@ -357,9 +434,27 @@ public class GameManager {
         return players.get(uuid);
     }
 
+    /** プレイヤーの所属チームをメインボードのバニラチームから引く。未所属/未対応なら null。 */
     public Team getTeamOf(Player player) {
-        PlayerData data = players.get(player.getUniqueId());
-        return data == null ? null : getTeam(data.getTeamId());
+        org.bukkit.scoreboard.Scoreboard main = mainBoard();
+        if (main == null) {
+            return null;
+        }
+        org.bukkit.scoreboard.Team vt = main.getEntryTeam(player.getName());
+        return vt == null ? null : getTeam(vt.getName());
+    }
+
+    /** プレイヤーをメインボードのバニラチームへ入れる (同名以外からは自動的に外れる)。 */
+    private void addToVanillaTeam(Player player, String teamId) {
+        org.bukkit.scoreboard.Scoreboard main = mainBoard();
+        if (main == null) {
+            return;
+        }
+        org.bukkit.scoreboard.Team vt = main.getTeam(teamId);
+        if (vt == null) {
+            vt = main.registerNewTeam(teamId);
+        }
+        vt.addEntry(player.getName());
     }
 
     /**
@@ -415,7 +510,7 @@ public class GameManager {
             }
         }
         if (smallest != null) {
-            getPlayerData(player).setTeamId(smallest.getId());
+            addToVanillaTeam(player, smallest.getId());
             applyNameTag(player);
         }
         return smallest;
@@ -436,7 +531,7 @@ public class GameManager {
         for (int i = 0; i < online.size(); i++) {
             Player player = online.get(i);
             Team team = teamList.get(i % teamList.size());
-            getPlayerData(player).setTeamId(team.getId());
+            addToVanillaTeam(player, team.getId());
         }
         // ネームタグ/ボードの所属を全員ぶん貼り直す
         for (Player player : online) {
@@ -445,21 +540,233 @@ public class GameManager {
         return online.size();
     }
 
+    // ---- チーム希望受付フェーズ ---------------------------------------------
+
+    public boolean isSelectionActive() {
+        return selectionActive;
+    }
+
+    /**
+     * 15秒のチーム希望受付フェーズを開始する。受付中はプレイヤーが {@link #setTeamPreference} で
+     * 希望チームを選べる。受付終了時に {@link #finalizeTeamSelection} が呼ばれ、人数差が最大1に
+     * なるよう均等化する。
+     * @return 開始できれば true。チーム未定義 / 既に受付中なら false。
+     */
+    public boolean startTeamSelection() {
+        if (teams.isEmpty() || selectionActive) {
+            return false;
+        }
+        teamPreferences.clear();
+        selectionActive = true;
+        broadcastTeamSelectPrompt();
+        selectionTask = new TeamSelectionTask(this, 15);
+        selectionTask.runTaskTimer(plugin, 20L, 20L);
+        return true;
+    }
+
+    /** 希望受付タスクが動いていれば停止する (onDisable などの後始末用)。 */
+    public void cancelSelectionTask() {
+        if (selectionTask != null) {
+            selectionTask.cancel();
+            selectionTask = null;
+        }
+        selectionActive = false;
+        teamPreferences.clear();
+    }
+
+    /**
+     * 受付中にプレイヤーの希望チームを登録する。見た目にも即座に反映する。
+     * @return 登録できれば true。受付中でない / チームが存在しないなら false。
+     */
+    public boolean setTeamPreference(Player player, String teamId) {
+        if (!selectionActive) {
+            return false;
+        }
+        Team team = getTeam(teamId);
+        if (team == null) {
+            return false;
+        }
+        teamPreferences.put(player.getUniqueId(), team.getId());
+        // フィードバックとして見た目も即反映 (最終確定は finalizeTeamSelection)
+        addToVanillaTeam(player, team.getId());
+        applyNameTag(player);
+        player.sendMessage(ChatColor.GREEN + team.getDisplayName()
+                + ChatColor.GREEN + " を希望しました。");
+        return true;
+    }
+
+    /**
+     * 受付中にプレイヤーの希望を「おまかせ (未希望)」に戻す。finalize 時にランダム配分される。
+     * @return 受付中なら true。受付中でなければ false。
+     */
+    public boolean clearTeamPreference(Player player) {
+        if (!selectionActive) {
+            return false;
+        }
+        teamPreferences.remove(player.getUniqueId());
+        player.sendMessage(ChatColor.GREEN + "チームをおまかせ (ランダム) にしました。");
+        return true;
+    }
+
+    /** 各チームのクリック可能なボタンを全員に表示する。 */
+    private void broadcastTeamSelectPrompt() {
+        net.kyori.adventure.text.Component header = net.kyori.adventure.text.Component.text(
+                "15秒以内に希望チームをクリック！ ", net.kyori.adventure.text.format.NamedTextColor.GOLD);
+        net.kyori.adventure.text.Component line = header;
+        for (Team team : teams.values()) {
+            net.kyori.adventure.text.Component button =
+                    net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                            .deserialize("[" + team.getDisplayName() + "]")
+                            .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/ktf team " + team.getId()))
+                            .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
+                                    net.kyori.adventure.text.Component.text(team.getName() + " を希望する")));
+            line = line.append(button).append(net.kyori.adventure.text.Component.text(" "));
+        }
+        // おまかせ (ランダム) ボタン。希望を出さずランダム配分を選べる。
+        net.kyori.adventure.text.Component randomButton =
+                net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                        .deserialize(ChatColor.GRAY + "[おまかせ]")
+                        .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/ktf team random"))
+                        .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
+                                net.kyori.adventure.text.Component.text("チームをおまかせ (ランダム) にする")));
+        line = line.append(randomButton);
+        Bukkit.broadcast(line);
+    }
+
+    /**
+     * 受付終了時に呼ばれ、希望を反映しつつ人数差が最大1になるよう均等化する。
+     * 希望者は希望チームへ、未希望者は人数の少ないチームへ配る。それでも差が2以上残る場合は
+     * 多いチームから「未希望者を優先」してランダムに少ないチームへ移動する。
+     */
+    void finalizeTeamSelection() {
+        selectionActive = false;
+        selectionTask = null;
+        try {
+            if (teams.isEmpty()) {
+                return;
+            }
+            List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+            List<Team> teamList = new ArrayList<>(teams.values());
+
+            // teamId -> そのチームに割り当てたプレイヤー一覧
+            Map<String, List<Player>> assign = new HashMap<>();
+            for (Team t : teamList) {
+                assign.put(t.getId(), new ArrayList<>());
+            }
+            // 希望を出さなかったプレイヤー (バランス調整で優先的に動かす)
+            java.util.Set<UUID> unchosen = new java.util.HashSet<>();
+
+            // 1) 希望者は希望チームへ
+            List<Player> noPref = new ArrayList<>();
+            for (Player p : online) {
+                String pref = teamPreferences.get(p.getUniqueId());
+                if (pref != null && assign.containsKey(pref)) {
+                    assign.get(pref).add(p);
+                } else {
+                    noPref.add(p);
+                    unchosen.add(p.getUniqueId());
+                }
+            }
+
+            // 2) 未希望者を毎回「最小人数チーム」へ貪欲に配る
+            java.util.Collections.shuffle(noPref, random);
+            for (Player p : noPref) {
+                smallestTeam(assign, teamList).add(p);
+            }
+
+            // 3) 人数差が最大1になるまで、多いチームから少ないチームへ移動 (未希望者優先)
+            while (true) {
+                List<Player> maxList = largestTeam(assign, teamList);
+                List<Player> minList = smallestTeam(assign, teamList);
+                if (maxList.size() - minList.size() <= 1) {
+                    break;
+                }
+                Player mover = pickMover(maxList, unchosen);
+                maxList.remove(mover);
+                minList.add(mover);
+            }
+
+            // 4) 確定反映
+            for (Map.Entry<String, List<Player>> e : assign.entrySet()) {
+                for (Player p : e.getValue()) {
+                    addToVanillaTeam(p, e.getKey());
+                    applyNameTag(p);
+                }
+            }
+            updateSidebar();
+
+            // 5) 最終人数を告知
+            StringBuilder sb = new StringBuilder(ChatColor.GOLD + "[KitTeamfight] チーム分け完了！ ");
+            boolean first = true;
+            for (Team t : teamList) {
+                if (!first) {
+                    sb.append(ChatColor.GRAY).append(" / ");
+                }
+                sb.append(t.getDisplayName()).append(ChatColor.GRAY).append(": ")
+                        .append(assign.get(t.getId()).size()).append("人");
+                first = false;
+            }
+            Bukkit.broadcastMessage(sb.toString());
+        } finally {
+            teamPreferences.clear();
+        }
+    }
+
+    /** 移動させるプレイヤーを選ぶ。未希望者がいれば優先、いなければランダム。 */
+    private Player pickMover(List<Player> from, java.util.Set<UUID> unchosen) {
+        List<Player> candidates = new ArrayList<>();
+        for (Player p : from) {
+            if (unchosen.contains(p.getUniqueId())) {
+                candidates.add(p);
+            }
+        }
+        if (candidates.isEmpty()) {
+            candidates = from;
+        }
+        return candidates.get(random.nextInt(candidates.size()));
+    }
+
+    private List<Player> smallestTeam(Map<String, List<Player>> assign, List<Team> teamList) {
+        List<Player> smallest = null;
+        for (Team t : teamList) {
+            List<Player> list = assign.get(t.getId());
+            if (smallest == null || list.size() < smallest.size()) {
+                smallest = list;
+            }
+        }
+        return smallest;
+    }
+
+    private List<Player> largestTeam(Map<String, List<Player>> assign, List<Team> teamList) {
+        List<Player> largest = null;
+        for (Team t : teamList) {
+            List<Player> list = assign.get(t.getId());
+            if (largest == null || list.size() > largest.size()) {
+                largest = list;
+            }
+        }
+        return largest;
+    }
+
     public boolean joinTeam(Player player, String teamId) {
         Team team = getTeam(teamId);
         if (team == null) {
             return false;
         }
-        getPlayerData(player).setTeamId(team.getId());
+        addToVanillaTeam(player, team.getId());
         applyNameTag(player);
         return true;
     }
 
     private int countMembers(String teamId) {
+        Team team = getTeam(teamId);
+        if (team == null) {
+            return 0;
+        }
         int count = 0;
         for (Player online : Bukkit.getOnlinePlayers()) {
-            PlayerData data = players.get(online.getUniqueId());
-            if (data != null && teamId.equalsIgnoreCase(data.getTeamId())) {
+            Team t = getTeamOf(online);
+            if (t != null && t.getId().equalsIgnoreCase(team.getId())) {
                 count++;
             }
         }
@@ -678,9 +985,8 @@ public class GameManager {
             return;
         }
         for (Player online : Bukkit.getOnlinePlayers()) {
-            PlayerData data = players.get(online.getUniqueId());
-            if (data != null && data.getTeamId() != null) {
-                data.addPoints(config.pointAmountPerTick);
+            if (getTeamOf(online) != null) {
+                getPlayerData(online).addPoints(config.pointAmountPerTick);
             }
         }
     }
@@ -696,6 +1002,32 @@ public class GameManager {
         if (team != null) {
             team.loseTickets(config.ticketLossPerKill);
             checkVictory();
+        }
+    }
+
+    /**
+     * キル時の演出。被害者の死亡地点にパーティクルと効果音を出し、
+     * キラーがいれば撃破フィードバック (アクションバー + 効果音) を送る。
+     */
+    public void playKillEffect(Player killer, Player victim) {
+        World world = victim.getWorld();
+        if (world == null) {
+            return;
+        }
+        Location loc = victim.getLocation().add(0, 1.0, 0);
+        world.spawnParticle(Particle.CRIT, loc, 30, 0.4, 0.6, 0.4, 0.2);
+        world.spawnParticle(Particle.DAMAGE_INDICATOR, loc, 12, 0.3, 0.5, 0.3, 0);
+        world.spawnParticle(Particle.LARGE_SMOKE, loc, 8, 0.2, 0.4, 0.2, 0.02);
+        world.playSound(loc, Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.0f, 1.0f);
+
+        if (killer != null && killer != victim) {
+            killer.playSound(killer.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1.0f, 1.0f);
+            killer.sendActionBar(net.kyori.adventure.text.Component.text(
+                    "☠ " + victim.getName() + " を撃破！",
+                    net.kyori.adventure.text.format.NamedTextColor.RED));
+            if (running) {
+                getPlayerData(killer).addKill(); // その試合のキル数を集計 (Tab表示用)
+            }
         }
     }
 
@@ -772,14 +1104,12 @@ public class GameManager {
         }
         neutralizeAllFlags(); // 前の試合の所有者を引き継がず、全旗を中立に戻す
         for (Player online : Bukkit.getOnlinePlayers()) {
-            PlayerData data = players.get(online.getUniqueId());
-            if (data == null || data.getTeamId() == null) {
+            if (getTeamOf(online) == null) {
                 autoAssign(online);
             }
-            data = getPlayerData(online);
-            data.resetForNewMatch();
+            getPlayerData(online).resetForNewMatch();
             applyNameTag(online);
-            Team team = getTeam(data.getTeamId());
+            Team team = getTeamOf(online);
             if (team != null && team.getSpawn() != null) {
                 online.teleport(team.getSpawn());
             }
@@ -807,6 +1137,86 @@ public class GameManager {
         removeAllHorses(); // 試合終了時に騎兵の馬を片付ける
         if (winner != null) {
             Bukkit.broadcastMessage(ChatColor.GOLD + "[KitTeamfight] 勝者: " + winner.getDisplayName() + " !");
+
+            // 勝者/敗者ごとに画面中央へ大きくタイトル表示 + 効果音
+            String winSubtitle = ChatColor.GRAY + winner.getDisplayName() + ChatColor.GRAY + " の勝利！";
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                Team team = getTeamOf(player);
+                if (team == null) {
+                    continue; // 観戦/未所属にはタイトルを出さない
+                }
+                boolean won = team.getId().equalsIgnoreCase(winner.getId());
+                if (won) {
+                    // §6§l 金色 + 太字で「勝利」
+                    player.sendTitle(ChatColor.GOLD + "" + ChatColor.BOLD + "勝利",
+                            winSubtitle, 10, 70, 20);
+                    player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+                } else {
+                    // §c§l 赤色 + 太字で「敗北」
+                    player.sendTitle(ChatColor.RED + "" + ChatColor.BOLD + "敗北",
+                            winSubtitle, 10, 70, 20);
+                    player.playSound(player.getLocation(), Sound.ENTITY_WITHER_DEATH, 0.8f, 1.0f);
+                }
+            }
+
+            // 勝者チームの色を基調に、複数色の花火パレットを用意
+            final java.util.List<Color> palette = new ArrayList<>();
+            if (winner.getColor() == ChatColor.RED) {
+                palette.add(Color.RED);
+                palette.add(Color.ORANGE);
+                palette.add(Color.YELLOW);
+                palette.add(Color.WHITE);
+            } else {
+                palette.add(Color.BLUE);
+                palette.add(Color.AQUA);
+                palette.add(Color.fromRGB(0x00, 0xBF, 0xFF));
+                palette.add(Color.WHITE);
+            }
+            final FireworkEffect.Type[] shapes = {
+                    FireworkEffect.Type.BALL_LARGE,
+                    FireworkEffect.Type.BALL,
+                    FireworkEffect.Type.STAR,
+                    FireworkEffect.Type.BURST
+            };
+            final java.util.Random rng = new java.util.Random();
+
+            // 約4秒間 (0.4秒間隔 * 10回) にわたって花火を連射し、豪華に演出する
+            new org.bukkit.scheduler.BukkitRunnable() {
+                int count = 0;
+
+                @Override
+                public void run() {
+                    if (count >= 10) {
+                        cancel();
+                        return;
+                    }
+                    count++;
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        World world = player.getWorld();
+                        Location loc = player.getLocation().add(rng.nextDouble() * 4 - 2, 2,
+                                rng.nextDouble() * 4 - 2);
+                        Firework firework = world.spawn(loc, Firework.class);
+                        FireworkMeta meta = firework.getFireworkMeta();
+
+                        Color c1 = palette.get(rng.nextInt(palette.size()));
+                        Color c2 = palette.get(rng.nextInt(palette.size()));
+                        Color fade = palette.get(rng.nextInt(palette.size()));
+
+                        FireworkEffect effect = FireworkEffect.builder()
+                                .withColor(c1, c2)
+                                .withFade(fade)
+                                .with(shapes[rng.nextInt(shapes.length)])
+                                .flicker(true)
+                                .trail(true)
+                                .build();
+
+                        meta.addEffect(effect);
+                        meta.setPower(1 + rng.nextInt(2)); // 1〜2 で飛ぶ高さを散らす
+                        firework.setFireworkMeta(meta);
+                    }
+                }
+            }.runTaskTimer(plugin, 0L, 8L);
         } else {
             Bukkit.broadcastMessage(ChatColor.GOLD + "[KitTeamfight] 試合終了 (引き分け)");
         }

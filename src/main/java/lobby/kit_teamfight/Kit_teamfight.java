@@ -3,7 +3,6 @@ package lobby.kit_teamfight;
 import lobby.kit_teamfight.command.FlagCommand;
 import lobby.kit_teamfight.command.GameCommand;
 import lobby.kit_teamfight.command.KitCommand;
-import lobby.kit_teamfight.command.TeamCommand;
 import lobby.kit_teamfight.game.FlagParticleTask;
 import lobby.kit_teamfight.game.GameManager;
 import lobby.kit_teamfight.game.GameTask;
@@ -51,7 +50,6 @@ public final class Kit_teamfight extends JavaPlugin {
 
         // コマンド登録
         register("ktf", new GameCommand(game));
-        register("team", new TeamCommand(game));
         register("kit", new KitCommand(game, shop));
         register("flag", new FlagCommand(game));
 
@@ -78,6 +76,7 @@ public final class Kit_teamfight extends JavaPlugin {
             particleTask.cancel();
         }
         if (game != null) {
+            game.cancelSelectionTask();     // チーム希望受付タスクが残っていれば止める
             game.removeAllFlagHolograms(); // 保存されないホログラムを掃除
             game.removeAllHorses();        // 騎兵の馬を片付ける
             game.getFlagManager().save();

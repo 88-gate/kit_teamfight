@@ -90,6 +90,33 @@ public class FlagVisualizer {
         }
     }
 
+    /**
+     * 旗が占領された瞬間の軽いエフェクト。所有チーム色のパーティクルを旗の上に少量散らし、
+     * 火花と効果音を旗付近のプレイヤーへ流す。勝利演出ほど派手にしない。
+     */
+    public void showCaptureBurst(Flag flag) {
+        Location loc = flag.getLocation();
+        if (loc == null || loc.getWorld() == null) {
+            return;
+        }
+        World world = loc.getWorld();
+        Location center = loc.clone().add(0.5, 1.0, 0.5);
+        Color color = colorFor(flag.getOwnerTeamId());
+        Particle.DustOptions dust = new Particle.DustOptions(color, 1.6f);
+        for (int i = 0; i < 25; i++) {
+            double ox = (Math.random() - 0.5) * 2.5;
+            double oy = Math.random() * 1.5;
+            double oz = (Math.random() - 0.5) * 2.5;
+            world.spawnParticle(Particle.DUST,
+                    center.getX() + ox, center.getY() + oy, center.getZ() + oz,
+                    1, 0, 0, 0, 0, dust);
+        }
+        world.spawnParticle(Particle.FIREWORK, center, 12, 0.4, 0.5, 0.4, 0.06);
+        world.spawnParticle(Particle.HAPPY_VILLAGER, center, 8, 0.5, 0.5, 0.5, 0);
+        world.playSound(center, org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+        world.playSound(center, org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
+    }
+
     // ---- ホログラム ---------------------------------------------------------
 
     private void ensureHologram(Flag flag) {

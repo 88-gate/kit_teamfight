@@ -3,14 +3,15 @@ package lobby.kit_teamfight.player;
 import java.util.UUID;
 
 /**
- * プレイヤーごとの試合中データ。所属チーム・ポイント・保有 kit を持つ。
+ * プレイヤーごとの試合中データ。ポイント・保有 kit を持つ。
+ * 所属チームはバニラのメインスコアボード (GameManager.getTeamOf) で管理する。
  * ポイントは死亡では消えず、試合終了時にリセットされる。
  */
 public class PlayerData {
 
     private final UUID uuid;
-    private String teamId;
     private int points;
+    private int kills; // その試合のキル数 (試合開始でリセット)
     private String currentKitId; // null = kit 未保有 (初期装備)
 
     public PlayerData(UUID uuid) {
@@ -19,14 +20,6 @@ public class PlayerData {
 
     public UUID getUuid() {
         return uuid;
-    }
-
-    public String getTeamId() {
-        return teamId;
-    }
-
-    public void setTeamId(String teamId) {
-        this.teamId = teamId;
     }
 
     public int getPoints() {
@@ -49,6 +42,14 @@ public class PlayerData {
         return true;
     }
 
+    public int getKills() {
+        return kills;
+    }
+
+    public void addKill() {
+        this.kills++;
+    }
+
     public String getCurrentKitId() {
         return currentKitId;
     }
@@ -61,9 +62,10 @@ public class PlayerData {
         return currentKitId != null;
     }
 
-    /** 試合終了時のリセット。チーム所属は維持する。 */
+    /** 試合終了時のリセット。チーム所属はバニラ側で保持されるためここでは触らない。 */
     public void resetForNewMatch() {
         this.points = 0;
+        this.kills = 0;
         this.currentKitId = null;
     }
 }

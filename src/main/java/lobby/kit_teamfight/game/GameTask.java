@@ -1,7 +1,6 @@
 package lobby.kit_teamfight.game;
 
 import lobby.kit_teamfight.flag.Flag;
-import lobby.kit_teamfight.player.PlayerData;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -71,11 +70,11 @@ public class GameTask extends BukkitRunnable {
             if (player.getLocation().distanceSquared(loc) > radiusSq) {
                 continue;
             }
-            PlayerData data = game.getPlayerData(player);
-            String teamId = data.getTeamId();
-            if (teamId == null) {
+            Team playerTeam = game.getTeamOf(player);
+            if (playerTeam == null) {
                 continue;
             }
+            String teamId = playerTeam.getId();
             if (flag.isOwnedBy(teamId)) {
                 ownerPresent = true;
             } else {

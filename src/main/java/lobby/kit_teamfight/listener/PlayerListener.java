@@ -2,7 +2,6 @@ package lobby.kit_teamfight.listener;
 
 import lobby.kit_teamfight.game.GameManager;
 import lobby.kit_teamfight.game.Team;
-import lobby.kit_teamfight.player.PlayerData;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -19,6 +18,7 @@ import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -42,8 +42,7 @@ public class PlayerListener implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         player.setGameMode(GameMode.ADVENTURE); // サーバー参加時はアドベンチャーモードに固定
-        PlayerData data = game.getPlayerData(player);
-        if (data.getTeamId() == null) {
+        if (game.getTeamOf(player) == null) {
             game.autoAssign(player);
         }
         game.applyNameTag(player);
@@ -57,6 +56,37 @@ public class PlayerListener implements Listener {
         } else {
             game.giveStartingLoadout(player);
         }
+    }
+
+    /**
+     * 常時チームチャット。先頭に "!" を付けた場合のみ全体チャットになる。
+     * チーム未所属のプレイヤーは常に全体チャット扱い。
+     */
+    @EventHandler
+    public void onChat(AsyncPlayerChatEvent event) {
+        Player sender = event.getPlayer();
+        String msg = event.getMessage();
+        Team senderTeam = game.getTeamOf(sender);
+
+        boolean global = senderTeam == null || msg.startsWith("!");
+        if (msg.startsWith("!")) {
+            event.setMessage(msg.substring(1)); // 先頭の "!" を取り除く
+        }
+
+        if (global) {
+            event.setFormat(ChatColor.YELLOW + "[全体] " + ChatColor.WHITE + "%1$s"
+                    + ChatColor.GRAY + ": " + ChatColor.WHITE + "%2$s");
+            return; // 受信者は全員のまま
+        }
+
+        // チームチャット: 受信者を同じチームのみに絞る (送信者は必ず含める)
+        event.getRecipients().removeIf(r -> {
+            Team t = game.getTeamOf(r);
+            return t == null || !t.getId().equalsIgnoreCase(senderTeam.getId());
+        });
+        event.getRecipients().add(sender);
+        event.setFormat(senderTeam.getColor() + "[" + senderTeam.getName() + "] " + ChatColor.WHITE + "%1$s"
+                + ChatColor.GRAY + ": " + ChatColor.WHITE + "%2$s");
     }
 
     @EventHandler
@@ -157,6 +187,8 @@ public class PlayerListener implements Listener {
     public void onDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
         game.onDeath(victim);
+        // キル演出 (被害者地点のパーティクル + キラーへのフィードバック)
+        game.playKillEffect(victim.getKiller(), victim);
         // 死亡で保有 kit を解除 (次は初期装備)
         game.resetKitOnDeath(victim);
         // 馬は復活しないので、死亡時に馬を片付ける
